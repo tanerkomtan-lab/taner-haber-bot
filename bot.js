@@ -108,6 +108,8 @@ async function pollUpdates() {
         await sendMessage(chatId, '🛑 Bildirimler durduruldu. Tekrar başlamak için /start yaz.');
       } else if (text === '/durum' || text === '/status') {
         await sendMessage(chatId, `Bot çalışıyor.\nKaynak sayısı: ${FEEDS.length}\nGörülen haber sayısı: ${seenLinks.size}\nAbone sayısı: ${chatIds.size}`);
+      } else if (text === '/id') {
+        await sendMessage(chatId, `Chat ID: ${chatId}`);
       }
     }
   } catch (e) {
@@ -115,15 +117,28 @@ async function pollUpdates() {
   }
 }
 
+// ─── TAZELIK FILTRESI ─────────────────────────────────────────
+const FRESHNESS_WINDOW_MS = 90 * 60 * 1000; // 90 dakika
+let isFirstRun = true;
+
 // ─── HABERLERI CEK VE YENİLERİ GÖNDER ────────────────────────
 async function checkFeed(feed) {
   try {
     const data = await parser.parseURL(feed.url);
-    const items = (data.items || []).slice(0, 15); // her kaynaktan en yeni 15 haberi kontrol et
+    const items = (data.items || []).slice(0, 15);
     for (const item of items) {
       const link = item.link || item.guid;
       if (!link || seenLinks.has(link)) continue;
+
+      const pubDateStr = item.isoDate || item.pubDate;
+      const pubDate = pubDateStr ? new Date(pubDateStr) : null;
+      const ageMs = pubDate && !isNaN(pubDate.getTime()) ? (Date.now() - pubDate.getTime()) : null;
+
       rememberSeen(link);
+
+      const isFresh = ageMs !== null ? ageMs <= FRESHNESS_WINDOW_MS : !isFirstRun;
+      if (!isFresh) continue;
+
       const title = (item.title || '').trim();
       const message = `📰 ${feed.name}\n${title}\n${link}`;
       await broadcast(message);
@@ -139,39 +154,18 @@ async function checkAllFeeds() {
   for (const feed of FEEDS) {
     await checkFeed(feed);
   }
+  isFirstRun = false;
   console.log('Haber kontrolu tamamlandi.');
-}
-
-// ─── ILK CALISTIRMADA: mevcut haberleri SESSIZCE isaretle ───
-// (bot ilk acildiginda eski haberlerin hepsini atmasin diye)
-async function primeSeenLinks() {
-  console.log('Mevcut haberler isaretleniyor (ilk calistirma)...');
-  for (const feed of FEEDS) {
-    try {
-      const data = await parser.parseURL(feed.url);
-      const items = (data.items || []).slice(0, 15);
-      for (const item of items) {
-        const link = item.link || item.guid;
-        if (link) seenLinks.add(link);
-      }
-    } catch (e) { console.error(`${feed.name} prime hatasi:`, e.message); }
-  }
-  saveJSON(SEEN_FILE, Array.from(seenLinks));
-  console.log('Ilk isaretleme tamamlandi. Toplam:', seenLinks.size);
 }
 
 // ─── ZAMANLAYICILAR ───────────────────────────────────────────
 cron.schedule('*/20 * * * *', () => { checkAllFeeds(); });
-cron.schedule('* * * * *', () => { pollUpdates(); }); // her dakika /start mesajlarini kontrol et
+cron.schedule('* * * * *', () => { pollUpdates(); });
 
 console.log('Taner Haber Bot basladi!');
 
-(async () => {
-  if (seenLinks.size === 0) {
-    await primeSeenLinks();
-  }
-  pollUpdates();
-})();
+checkAllFeeds();
+pollUpdates();
 
 // ─── HTTP SUNUCUSU (Render uyku moduna gecmesin diye) ────────
 http.createServer((req, res) => {
@@ -187,4 +181,4 @@ http.createServer((req, res) => {
   } else {
     res.end('Taner Haber Bot calisiyor!');
   }
-}).listen(process.env.PORT || 3000
+}).listen(process.env.PORT || 3000);
