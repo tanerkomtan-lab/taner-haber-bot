@@ -187,4 +187,4 @@ http.createServer((req, res) => {
   } else {
     res.end('Taner Haber Bot calisiyor!');
   }
-}).listen(process.env.PORT || 3000);
+}).listen(process.env.PORT || 3000
