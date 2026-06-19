@@ -6,9 +6,8 @@ const http = require('http');
 
 const parser = new Parser({ timeout: 15000 });
 
-// ─── AYARLAR ─────────────────────────────────────────────────
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const ENV_CHAT_ID = process.env.TELEGRAM_CHAT_ID || null; // sabit chat id (opsiyonel)
+const ENV_CHAT_ID = process.env.TELEGRAM_CHAT_ID || null;
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
 const CHAT_IDS_FILE = '/tmp/chat_ids.json';
@@ -19,7 +18,6 @@ let chatIds = new Set();
 let seenLinks = new Set();
 let lastUpdateId = 0;
 
-// ─── KALICI DOSYALAR (Render /tmp - servis ayakta oldugu surece kalir) ──
 function loadJSON(path, fallback) {
   try {
     if (fs.existsSync(path)) return JSON.parse(fs.readFileSync(path, 'utf8'));
@@ -53,19 +51,17 @@ function rememberChat(chatId) {
   }
 }
 
-// ─── HABER KAYNAKLARI (RSS) ──────────────────────────────────
 const FEEDS = [
-  { name: 'NTV', url: 'https://www.ntv.com.tr/gundem.rss' },
-  { name: 'Sabah', url: 'https://www.sabah.com.tr/rss/news.xml' },
-  { name: 'Sözcü', url: 'https://www.sozcu.com.tr/feeds-rss-category-gundem' },
-  { name: 'Habertürk', url: 'http://www.haberturk.com/rss' },
-  { name: 'DW Türkçe', url: 'http://rss.dw.com/rdf/rss-tur-all' },
-  { name: 'Bild', url: 'https://www.bild.de/feed/alles.xml' },
-  { name: 'National Geographic', url: 'https://www.nationalgeographic.com/science/rss' },
-  { name: 'ScienceDaily', url: 'https://www.sciencedaily.com/rss/all.xml' },
+  { name: 'NTV', url: 'https://www.ntv.com.tr/gundem.rss', tag: '#NTV #Türkiye #Gündem', siteLink: 'https://deutschturkhaber.com/turkiye' },
+  { name: 'Sabah', url: 'https://www.sabah.com.tr/rss/news.xml', tag: '#Sabah #Türkiye #Gündem', siteLink: 'https://deutschturkhaber.com/turkiye' },
+  { name: 'Sözcü', url: 'https://www.sozcu.com.tr/feeds-rss-category-gundem', tag: '#Sözcü #Türkiye #Gündem', siteLink: 'https://deutschturkhaber.com/turkiye' },
+  { name: 'Habertürk', url: 'http://www.haberturk.com/rss', tag: '#Habertürk #Türkiye #Gündem', siteLink: 'https://deutschturkhaber.com/turkiye' },
+  { name: 'DW Türkçe', url: 'http://rss.dw.com/rdf/rss-tur-all', tag: '#DW #Almanya #Türkiye', siteLink: 'https://deutschturkhaber.com/almanya' },
+  { name: 'Bild', url: 'https://www.bild.de/feed/alles.xml', tag: '#Bild #Almanya #Deutschland', siteLink: 'https://deutschturkhaber.com/almanya' },
+  { name: 'National Geographic', url: 'https://www.nationalgeographic.com/science/rss', tag: '#NatGeo #Bilim #Science', siteLink: 'https://deutschturkhaber.com' },
+  { name: 'ScienceDaily', url: 'https://www.sciencedaily.com/rss/all.xml', tag: '#Bilim #Science', siteLink: 'https://deutschturkhaber.com' },
 ];
 
-// ─── TELEGRAM API YARDIMCILARI ───────────────────────────────
 async function sendMessage(chatId, text) {
   try {
     await axios.post(`${TELEGRAM_API}/sendMessage`, {
@@ -81,11 +77,10 @@ async function sendMessage(chatId, text) {
 async function broadcast(text) {
   for (const chatId of chatIds) {
     await sendMessage(chatId, text);
-    await new Promise((r) => setTimeout(r, 400)); // Telegram rate limit icin kucuk bekleme
+    await new Promise((r) => setTimeout(r, 400));
   }
 }
 
-// ─── /start KOMUTUNU DINLEME (polling ile basit) ─────────────
 async function pollUpdates() {
   try {
     const res = await axios.get(`${TELEGRAM_API}/getUpdates`, {
@@ -117,11 +112,9 @@ async function pollUpdates() {
   }
 }
 
-// ─── TAZELIK FILTRESI ─────────────────────────────────────────
-const FRESHNESS_WINDOW_MS = 90 * 60 * 1000; // 90 dakika
+const FRESHNESS_WINDOW_MS = 90 * 60 * 1000;
 let isFirstRun = true;
 
-// ─── HABERLERI CEK VE YENİLERİ GÖNDER ────────────────────────
 async function checkFeed(feed) {
   try {
     const data = await parser.parseURL(feed.url);
@@ -140,7 +133,7 @@ async function checkFeed(feed) {
       if (!isFresh) continue;
 
       const title = (item.title || '').trim();
-      const message = `📰 ${feed.name}\n${title}\n${link}`;
+      const message = `📰 ${feed.name}\n${title}\n${link}\n\n🌐 X'te paylaşırken bunu kullan: ${feed.siteLink}\n\n${feed.tag || ''}`;
       await broadcast(message);
       console.log('Gonderildi:', feed.name, '-', title.substring(0, 60));
     }
@@ -158,7 +151,6 @@ async function checkAllFeeds() {
   console.log('Haber kontrolu tamamlandi.');
 }
 
-// ─── ZAMANLAYICILAR ───────────────────────────────────────────
 cron.schedule('*/20 * * * *', () => { checkAllFeeds(); });
 cron.schedule('* * * * *', () => { pollUpdates(); });
 
@@ -167,7 +159,6 @@ console.log('Taner Haber Bot basladi!');
 checkAllFeeds();
 pollUpdates();
 
-// ─── HTTP SUNUCUSU (Render uyku moduna gecmesin diye) ────────
 http.createServer((req, res) => {
   if (req.url === '/health') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
