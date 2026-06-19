@@ -133,7 +133,7 @@ async function checkFeed(feed) {
       if (!isFresh) continue;
 
       const title = (item.title || '').trim();
-      const message = `📰 ${feed.name}\n${title}\n${link}\n\n🌐 X'te paylaşırken bunu kullan: ${feed.siteLink}\n\n${feed.tag || ''}`;
+      const message = `📰 ${feed.name}\n${title}\n${link}\n\n🌐 ${feed.siteLink}\n\n${feed.tag || ''}`;
       await broadcast(message);
       console.log('Gonderildi:', feed.name, '-', title.substring(0, 60));
     }
