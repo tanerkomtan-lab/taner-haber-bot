@@ -52,15 +52,62 @@ function rememberChat(chatId) {
 }
 
 const FEEDS = [
-  { name: 'NTV', url: 'https://www.ntv.com.tr/gundem.rss', tag: '#NTV #Türkiye #Gündem', siteLink: 'https://deutschturkhaber.com/turkiye' },
-  { name: 'Sabah', url: 'https://www.sabah.com.tr/rss/news.xml', tag: '#Sabah #Türkiye #Gündem', siteLink: 'https://deutschturkhaber.com/turkiye' },
-  { name: 'Sözcü', url: 'https://www.sozcu.com.tr/feeds-rss-category-gundem', tag: '#Sözcü #Türkiye #Gündem', siteLink: 'https://deutschturkhaber.com/turkiye' },
-  { name: 'Habertürk', url: 'http://www.haberturk.com/rss', tag: '#Habertürk #Türkiye #Gündem', siteLink: 'https://deutschturkhaber.com/turkiye' },
-  { name: 'DW Türkçe', url: 'http://rss.dw.com/rdf/rss-tur-all', tag: '#DW #Almanya #Türkiye', siteLink: 'https://deutschturkhaber.com/almanya' },
-  { name: 'Bild', url: 'https://www.bild.de/feed/alles.xml', tag: '#Bild #Almanya #Deutschland', siteLink: 'https://deutschturkhaber.com/almanya' },
-  { name: 'National Geographic', url: 'https://www.nationalgeographic.com/science/rss', tag: '#NatGeo #Bilim #Science', siteLink: 'https://deutschturkhaber.com' },
-  { name: 'ScienceDaily', url: 'https://www.sciencedaily.com/rss/all.xml', tag: '#Bilim #Science', siteLink: 'https://deutschturkhaber.com' },
+  { name: 'NTV', url: 'https://www.ntv.com.tr/gundem.rss', category: 'gundem', siteLink: 'https://deutschturkhaber.com/turkiye' },
+  { name: 'Sabah', url: 'https://www.sabah.com.tr/rss/news.xml', category: 'gundem', siteLink: 'https://deutschturkhaber.com/turkiye' },
+  { name: 'Sözcü', url: 'https://www.sozcu.com.tr/feeds-rss-category-gundem', category: 'gundem', siteLink: 'https://deutschturkhaber.com/turkiye' },
+  { name: 'Habertürk', url: 'http://www.haberturk.com/rss', category: 'gundem', siteLink: 'https://deutschturkhaber.com/turkiye' },
+  { name: 'DW Türkçe', url: 'http://rss.dw.com/rdf/rss-tur-all', category: 'almanya', siteLink: 'https://deutschturkhaber.com/almanya' },
+  { name: 'Bild', url: 'https://www.bild.de/feed/alles.xml', category: 'almanya', siteLink: 'https://deutschturkhaber.com/almanya' },
+  { name: 'NTV Spor', url: 'https://www.ntv.com.tr/spor.rss', category: 'spor', siteLink: 'https://deutschturkhaber.com' },
+  { name: 'Webtekno', url: 'https://www.webtekno.com/rss.xml', category: 'teknoloji', siteLink: 'https://deutschturkhaber.com' },
+  { name: 'TechCrunch', url: 'https://techcrunch.com/feed/', category: 'teknoloji', siteLink: 'https://deutschturkhaber.com' },
+  { name: 'Heise', url: 'https://www.heise.de/newsticker/heise-atom.xml', category: 'teknoloji', siteLink: 'https://deutschturkhaber.com/almanya' },
+  { name: 'Beyaz Perde', url: 'https://www.beyazperde.com/rss/haberler.xml', category: 'sinema', siteLink: 'https://deutschturkhaber.com' },
+  { name: 'Variety', url: 'https://variety.com/feed/', category: 'sinema', siteLink: 'https://deutschturkhaber.com' },
+  { name: 'National Geographic', url: 'https://www.nationalgeographic.com/science/rss', category: 'bilim', siteLink: 'https://deutschturkhaber.com' },
+  { name: 'ScienceDaily', url: 'https://www.sciencedaily.com/rss/all.xml', category: 'bilim', siteLink: 'https://deutschturkhaber.com' },
 ];
+
+const CATEGORY_TAGS = {
+  gundem: ['#Türkiye', '#Gündem', '#SonDakika'],
+  almanya: ['#Almanya', '#Deutschland', '#Avrupa'],
+  spor: ['#Spor', '#Futbol', '#SüperLig'],
+  teknoloji: ['#Teknoloji', '#YapayZeka', '#Tech'],
+  sinema: ['#Sinema', '#Film', '#Dizi'],
+  bilim: ['#Bilim', '#Uzay', '#Science'],
+};
+
+const KEYWORD_TAGS = [
+  [/galatasaray/i, '#Galatasaray'],
+  [/fenerbah[çc]e/i, '#Fenerbahçe'],
+  [/be[şs]ikta[şs]/i, '#Beşiktaş'],
+  [/trabzonspor/i, '#Trabzonspor'],
+  [/d[üu]nya kupas[ıi]/i, '#DünyaKupası'],
+  [/transfer/i, '#Transfer'],
+  [/yapay zeka|\bai\b|chatgpt|openai/i, '#YapayZeka'],
+  [/iphone|apple/i, '#Apple'],
+  [/samsung/i, '#Samsung'],
+  [/google/i, '#Google'],
+  [/tesla|spacex|elon musk/i, '#Tesla'],
+  [/nasa|uzay|astronomi|gezegen|space/i, '#Uzay'],
+  [/deprem/i, '#Deprem'],
+  [/netflix/i, '#Netflix'],
+  [/hollywood|oscar|marvel|disney/i, '#Hollywood'],
+  [/dizi|series/i, '#Dizi'],
+  [/erdoğan/i, '#Erdoğan'],
+  [/ekonomi|dolar|euro|borsa/i, '#Ekonomi'],
+];
+
+function generateHashtags(title, category) {
+  const tags = new Set();
+  const base = CATEGORY_TAGS[category] || ['#Haber'];
+  base.slice(0, 2).forEach((t) => tags.add(t));
+  for (const [regex, tag] of KEYWORD_TAGS) {
+    if (tags.size >= 5) break;
+    if (regex.test(title)) tags.add(tag);
+  }
+  return Array.from(tags).slice(0, 5).join(' ');
+}
 
 async function sendMessage(chatId, text) {
   try {
@@ -133,7 +180,8 @@ async function checkFeed(feed) {
       if (!isFresh) continue;
 
       const title = (item.title || '').trim();
-      const message = `📰 ${feed.name}\n${title}\n${link}\n\n🌐 ${feed.siteLink}\n\n${feed.tag || ''}`;
+      const hashtags = generateHashtags(title, feed.category);
+      const message = `${title}\n${link}\n\n🌐 ${feed.siteLink}\n\n${hashtags}`;
       await broadcast(message);
       console.log('Gonderildi:', feed.name, '-', title.substring(0, 60));
     }
