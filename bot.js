@@ -9,6 +9,7 @@ const parser = new Parser({ timeout: 15000 });
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const ENV_CHAT_ID = process.env.TELEGRAM_CHAT_ID || null;
 const TELEGRAM_API = `https://api.telegram.org/bot${BOT_TOKEN}`;
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
 
 const CHAT_IDS_FILE = '/tmp/chat_ids.json';
 const SEEN_FILE = '/tmp/seen_links.json';
@@ -64,6 +65,9 @@ const FEEDS = [
   { name: 'Heise', url: 'https://www.heise.de/newsticker/heise-atom.xml', category: 'teknoloji', siteLink: 'https://deutschturkhaber.com/almanya' },
   { name: 'Beyaz Perde', url: 'https://www.beyazperde.com/rss/haberler.xml', category: 'sinema', siteLink: 'https://deutschturkhaber.com' },
   { name: 'Variety', url: 'https://variety.com/feed/', category: 'sinema', siteLink: 'https://deutschturkhaber.com' },
+  { name: 'IGN Türkiye', url: 'https://tr.ign.com/feed.xml', category: 'oyun', siteLink: 'https://deutschturkhaber.com' },
+  { name: 'Oyungezer', url: 'https://oyungezer.com.tr/rss', category: 'oyun', siteLink: 'https://deutschturkhaber.com' },
+  { name: 'Mobidictum', url: 'https://mobidictum.com/tr/feed/', category: 'oyun', siteLink: 'https://deutschturkhaber.com' },
   { name: 'National Geographic', url: 'https://www.nationalgeographic.com/science/rss', category: 'bilim', siteLink: 'https://deutschturkhaber.com' },
   { name: 'ScienceDaily', url: 'https://www.sciencedaily.com/rss/all.xml', category: 'bilim', siteLink: 'https://deutschturkhaber.com' },
 ];
@@ -74,6 +78,7 @@ const CATEGORY_TAGS = {
   spor: ['#Spor', '#Futbol', '#SüperLig'],
   teknoloji: ['#Teknoloji', '#YapayZeka', '#Tech'],
   sinema: ['#Sinema', '#Film', '#Dizi'],
+  oyun: ['#Oyun', '#Gaming', '#VideoOyun'],
   bilim: ['#Bilim', '#Uzay', '#Science'],
 };
 
@@ -96,6 +101,24 @@ const KEYWORD_TAGS = [
   [/dizi|series/i, '#Dizi'],
   [/erdoğan/i, '#Erdoğan'],
   [/ekonomi|dolar|euro|borsa/i, '#Ekonomi'],
+  [/playstation|ps5|ps4/i, '#PlayStation'],
+  [/xbox/i, '#Xbox'],
+  [/nintendo|switch/i, '#Nintendo'],
+  [/steam\b/i, '#Steam'],
+  [/fortnite/i, '#Fortnite'],
+  [/minecraft/i, '#Minecraft'],
+  [/\bgta\b|grand theft auto/i, '#GTA'],
+  [/roblox/i, '#Roblox'],
+  [/league of legends|\blol\b/i, '#LeagueOfLegends'],
+  [/valorant/i, '#Valorant'],
+  [/e[- ]?spor|esports/i, '#Espor'],
+  [/twitch/i, '#Twitch'],
+  [/youtube|youtuber/i, '#YouTube'],
+  [/anime|manga/i, '#Anime'],
+  [/k-?pop|bts|blackpink/i, '#KPop'],
+  [/instagram/i, '#Instagram'],
+  [/tiktok/i, '#TikTok'],
+  [/discord/i, '#Discord'],
 ];
 
 function generateHashtags(title, category) {
@@ -107,6 +130,28 @@ function generateHashtags(title, category) {
     if (regex.test(title)) tags.add(tag);
   }
   return Array.from(tags).slice(0, 5).join(' ');
+}
+
+async function aiHashtagsOlustur(title, category) {
+  if (!ANTHROPIC_API_KEY) return null;
+  try {
+    const r = await axios.post('https://api.anthropic.com/v1/messages', {
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 60,
+      system: 'Sen bir sosyal medya editörüsün. Verilen Türkçe haber başlığına ve kategoriye göre X (Twitter) için en alakalı, doğru ve mümkünse trend olabilecek 4-6 Türkçe hashtag üret. SADECE hashtagleri boşlukla ayrılmış şekilde yaz; hiçbir açıklama, numara veya ek cümle ekleme. Format: #KelimeBirleşik şeklinde, Türkçe karakterleri koru.',
+      messages: [{ role: 'user', content: `Başlık: ${title}\nKategori: ${category}` }],
+    }, {
+      headers: { 'Content-Type': 'application/json', 'x-api-key': ANTHROPIC_API_KEY, 'anthropic-version': '2023-06-01' },
+      timeout: 10000,
+    });
+    const text = r.data?.content?.[0]?.text?.trim();
+    if (!text) return null;
+    const tags = text.split(/\s+/).filter((t) => t.startsWith('#')).slice(0, 6);
+    return tags.length ? tags.join(' ') : null;
+  } catch (e) {
+    console.error('AI hashtag hatasi:', e.response ? JSON.stringify(e.response.data) : e.message);
+    return null;
+  }
 }
 
 async function sendMessage(chatId, text) {
@@ -180,7 +225,8 @@ async function checkFeed(feed) {
       if (!isFresh) continue;
 
       const title = (item.title || '').trim();
-      const hashtags = generateHashtags(title, feed.category);
+      let hashtags = await aiHashtagsOlustur(title, feed.category);
+      if (!hashtags) hashtags = generateHashtags(title, feed.category);
       const message = `${title}\n${link}\n\n🌐 ${feed.siteLink}\n\n${hashtags}`;
       await broadcast(message);
       console.log('Gonderildi:', feed.name, '-', title.substring(0, 60));
@@ -215,6 +261,7 @@ http.createServer((req, res) => {
       subscribers: chatIds.size,
       seenCount: seenLinks.size,
       feeds: FEEDS.map(f => f.name),
+      aiHashtags: !!ANTHROPIC_API_KEY,
       uptimeSeconds: Math.floor(process.uptime()),
     }));
   } else {
