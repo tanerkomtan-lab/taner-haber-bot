@@ -66,8 +66,10 @@ const FEEDS = [
   { name: 'Beyaz Perde', url: 'https://www.beyazperde.com/rss/haberler.xml', category: 'sinema', siteLink: 'https://deutschturkhaber.com' },
   { name: 'Variety', url: 'https://variety.com/feed/', category: 'sinema', siteLink: 'https://deutschturkhaber.com' },
   { name: 'IGN Türkiye', url: 'https://tr.ign.com/feed.xml', category: 'oyun', siteLink: 'https://deutschturkhaber.com' },
-  { name: 'Oyungezer', url: 'https://oyungezer.com.tr/rss', category: 'oyun', siteLink: 'https://deutschturkhaber.com' },
+  { name: 'Turkmmo', url: 'https://www.turkmmo.com/feed', category: 'oyun', siteLink: 'https://deutschturkhaber.com' },
   { name: 'Mobidictum', url: 'https://mobidictum.com/tr/feed/', category: 'oyun', siteLink: 'https://deutschturkhaber.com' },
+  { name: 'Stadt Köln', url: 'http://www.stadt-koeln.de/externe-dienste/rss/pressemeldungen.xml', category: 'koln', siteLink: 'https://deutschturkhaber.com' },
+  { name: 'WDR Rheinland', url: 'https://www1.wdr.de/nachrichten/rheinland/uebersicht-rheinland-100.feed', category: 'koln', siteLink: 'https://deutschturkhaber.com' },
   { name: 'National Geographic', url: 'https://www.nationalgeographic.com/science/rss', category: 'bilim', siteLink: 'https://deutschturkhaber.com' },
   { name: 'ScienceDaily', url: 'https://www.sciencedaily.com/rss/all.xml', category: 'bilim', siteLink: 'https://deutschturkhaber.com' },
 ];
@@ -79,6 +81,7 @@ const CATEGORY_TAGS = {
   teknoloji: ['#Teknoloji', '#YapayZeka', '#Tech'],
   sinema: ['#Sinema', '#Film', '#Dizi'],
   oyun: ['#Oyun', '#Gaming', '#VideoOyun'],
+  koln: ['#Köln', '#NRW', '#Almanya'],
   bilim: ['#Bilim', '#Uzay', '#Science'],
 };
 
@@ -119,6 +122,13 @@ const KEYWORD_TAGS = [
   [/instagram/i, '#Instagram'],
   [/tiktok/i, '#TikTok'],
   [/discord/i, '#Discord'],
+  [/köln|koeln/i, '#Köln'],
+  [/düsseldorf/i, '#Düsseldorf'],
+  [/dortmund/i, '#Dortmund'],
+  [/bonn\b/i, '#Bonn'],
+  [/euskirchen/i, '#Euskirchen'],
+  [/eifel/i, '#Eifel'],
+  [/nrw|nordrhein-westfalen/i, '#NRW'],
 ];
 
 function generateHashtags(title, category) {
